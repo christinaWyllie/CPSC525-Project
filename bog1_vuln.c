@@ -37,8 +37,7 @@ void deleteElement(char*** arr, int index, int* arrLen){
     (*arrLen)--;
     //Element is printed after the memory is freed. Unexpected values
     //will be printed
-    printf("**Element: %s is deleted**\n", deletedElement);
-    
+    printf("**Element: %s is deleted**\n", deletedElement);  
 }
 
 int main(){

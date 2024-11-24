@@ -38,7 +38,6 @@ void deleteElement(char*** arr, int index, int* arrLen){
     free(*arr);
     *arr = temp;         // Update the pointer to the new array
     (*arrLen)--; 
-    
 }
 
 int main(){
