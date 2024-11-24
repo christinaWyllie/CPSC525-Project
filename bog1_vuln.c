@@ -1,4 +1,4 @@
-#include "vuln.h"
+#include "Blog1.h"
 
 #define BUFFERSIZE 64
 #define NUM_OPTIONS 4
@@ -21,7 +21,8 @@ void deleteElement(char*** arr, int index, int* arrLen){
     for (int i = 0, j=0; i < *arrLen; i++){
         if (i == index){
             deletedElement = (*arr)[i];
-            printf("**Element: %s is deleted**\n", deletedElement);
+            //Free memory that need to be deleted so that it can allocate
+            //to another process.
             free((*arr)[i]);
             
         }
@@ -33,7 +34,10 @@ void deleteElement(char*** arr, int index, int* arrLen){
     }
     free(*arr);
     *arr = temp;         // Update the pointer to the new array
-    (*arrLen)--; 
+    (*arrLen)--;
+    //Element is printed after the memory is freed. Unexpected values
+    //will be printed
+    printf("**Element: %s is deleted**\n", deletedElement);
     
 }
 
