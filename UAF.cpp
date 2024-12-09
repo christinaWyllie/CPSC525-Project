@@ -3,29 +3,33 @@
 #include <vector>
 #include <string.h>
 
+// User structure to store user credentials, role, and grades
 struct User
 {
-    char username[51];
+    char username[51]; // Max 50 Characters
     char password[51];
-    bool prof;
+    bool prof; // Flag to indicate if user is a professor
     std::vector<char *> Grades;
 };
 
+// Structure to store multiple grades for students.
 struct student_grades
 {
-    User *student;
+    User *student; // Pointer to the student.
     char grade[101];
 };
 
+// Adds a new user
 void addUser(std::vector<User *> &users, const char *username, const char *password, bool prof)
 {
     User *newUser = (User *)malloc(sizeof(User));
     *newUser = (User){{}, {}, prof, {}};
     snprintf(newUser->username, sizeof(newUser->username), "%s", username);
     snprintf(newUser->password, sizeof(newUser->password), "%s", password);
-    users.push_back(newUser);
+    users.push_back(newUser); // Add the user to master list
 }
 
+// Validate user credentials and return a pointer to the user in the master list
 User *loginUser(std::vector<User *> &users, const char *username, const char *password)
 {
     for (size_t i = 0; i < users.size(); i++)
@@ -52,6 +56,7 @@ User *loginUser(std::vector<User *> &users, const char *username, const char *pa
     return nullptr;
 }
 
+// Display the grades for a student
 void checkGrades(User *student)
 {
     if (student->Grades.empty())
@@ -69,6 +74,7 @@ void checkGrades(User *student)
     }
 }
 
+// Remove the student from the system and frees associated memory - this is where the use after free begins.
 void dropClass(std::vector<User *> &users, User *student)
 {
     for (size_t i = 0; i < users.size(); i++)
@@ -79,12 +85,12 @@ void dropClass(std::vector<User *> &users, User *student)
 
             for (size_t j = 0; j < student->Grades.size(); j++)
             {
-                free(student->Grades[j]);
+                free(student->Grades[j]); // Free each grade string
             }
-            student->Grades.clear();
+            student->Grades.clear(); // Clear the grade vector
 
-            free(users[i]);
-            users[i] = nullptr;
+            free(users[i]);     // Free the user structure - this is the cause of the use after free.
+            users[i] = nullptr; // Remove user from the master list
             printf("     You have been removed from the class.\n");
             return;
         }
@@ -92,10 +98,13 @@ void dropClass(std::vector<User *> &users, User *student)
     printf("     Error: Student not found.\n");
 }
 
+// Allows the professor to submit grades for all students without having to publish them.
 void submitGrades(std::vector<User *> &users, std::vector<student_grades> &tempGrades, char *currentAssignment)
 {
+    // If some grades already exist, ask to override
     if (!tempGrades.empty())
     {
+
         printf("Grades for assignment '%s' already exist.\n", currentAssignment);
         printf("Do you want to override them? (yes/no): ");
 
@@ -162,7 +171,7 @@ void submitGrades(std::vector<User *> &users, std::vector<student_grades> &tempG
 
         break;
     }
-
+    // Collect grades for each student in the master list.
     for (size_t i = 0; i < users.size(); i++)
     {
         if (users[i] != nullptr && !users[i]->prof)
@@ -194,12 +203,21 @@ void submitGrades(std::vector<User *> &users, std::vector<student_grades> &tempG
             student_grades temp;
             temp.student = users[i];
             snprintf(temp.grade, sizeof(temp.grade), "On %s, %s scored %d%%.", currentAssignment, users[i]->username, numeGrade);
+            /*
+                Push the grade to a tempGrades vector, which stores a pointer to the user
+                associated with the grade. This design can lead to a Use-After-Free (UAF) 
+                vulnerability because when a user is deleted, the pointer in tempGrades is 
+                not cleared. If a new user with the same memory size is added, the dangling
+                pointer in tempGrades may now point to the new user. This flaw allows 
+                publishGrades to assign grades meant for the deleted user to the new user.
+            */
             tempGrades.push_back(temp);
         }
     }
     printf("     Grades for assignment '%s' submitted successfully.\n", currentAssignment);
 }
 
+//Allows a professor to publish grades
 void publishGrades(std::vector<student_grades> &tempGrades, const char *currentAssignment)
 {
 
@@ -241,7 +259,12 @@ void publishGrades(std::vector<student_grades> &tempGrades, const char *currentA
         {
             char *gradeEntry = (char *)malloc(strlen(tempGrades[i].grade) + 1);
             strcpy(gradeEntry, tempGrades[i].grade);
-            tempGrades[i].student->Grades.push_back(gradeEntry);
+            /*
+            Here if the tempGrades pointer points to the new user while having the grades
+            for a deleted user, it will publish the grades without any error checking. This is a
+            Use-After-Free (UAF).            
+            */
+            tempGrades[i].student->Grades.push_back(gradeEntry);  
         }
         printf("     Grades for assignment '%s' published successfully.\n", currentAssignment);
         tempGrades.clear();
@@ -251,7 +274,7 @@ void publishGrades(std::vector<student_grades> &tempGrades, const char *currentA
         printf("     Publishing grades for '%s' canceled.\n", currentAssignment);
     }
 }
-
+//Allows the professor to enroll a new student
 void enrollStudent(std::vector<User *> &users)
 {
     char newUsername[51];
